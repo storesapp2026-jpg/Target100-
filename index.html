@@ -1,0 +1,1206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stores KPI &amp; Appraisal | Sri Narasu's Coffee Co.</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root{
+  --coffee-900:#3B2415; --coffee-700:#6F4E37; --coffee-500:#9C6B45;
+  --coffee-300:#C8A27A; --cream-100:#FAF3E7; --cream-50:#FFFDF9;
+  --ok:#5A7D4A; --warn:#C08A2E; --danger:#B5493A;
+  --radius:12px; --shadow:0 4px 16px rgba(59,36,21,0.10);
+  font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+body{background:var(--cream-100); color:var(--coffee-900); min-height:100vh;}
+button{font-family:inherit; cursor:pointer; border:none;}
+input,select,textarea{font-family:inherit;}
+::-webkit-scrollbar{width:8px; height:8px;}
+::-webkit-scrollbar-thumb{background:var(--coffee-300); border-radius:8px;}
+
+/* ---------- LOGIN ---------- */
+#loginScreen{
+  min-height:100vh; display:flex; align-items:center; justify-content:center;
+  background:linear-gradient(160deg,var(--coffee-900),var(--coffee-700) 60%,var(--coffee-500));
+  padding:20px;
+}
+.login-card{
+  background:var(--cream-50); border-radius:16px; padding:40px 32px; width:100%; max-width:380px;
+  box-shadow:0 20px 50px rgba(0,0,0,0.35); text-align:center;
+}
+.login-card .brand-mark{
+  width:56px; height:56px; border-radius:50%; background:var(--coffee-700); color:#fff;
+  display:flex; align-items:center; justify-content:center; font-size:26px; margin:0 auto 14px;
+}
+.login-card h1{font-size:19px; color:var(--coffee-900); margin-bottom:2px;}
+.login-card p.sub{font-size:12.5px; color:var(--coffee-500); margin-bottom:26px;}
+.field{text-align:left; margin-bottom:16px;}
+.field label{display:block; font-size:12px; font-weight:600; color:var(--coffee-700); margin-bottom:5px; text-transform:uppercase; letter-spacing:.04em;}
+.field input{width:100%; padding:11px 13px; border:1.5px solid var(--coffee-300); border-radius:8px; font-size:14.5px; background:#fff; color:var(--coffee-900);}
+.field input:focus{outline:none; border-color:var(--coffee-700);}
+.btn-primary{
+  width:100%; background:var(--coffee-700); color:#fff; padding:12px; border-radius:8px;
+  font-size:14.5px; font-weight:600; margin-top:6px; transition:background .15s;
+}
+.btn-primary:hover{background:var(--coffee-900);}
+.btn-primary:disabled{opacity:.6; cursor:default;}
+#loginError{color:var(--danger); font-size:12.5px; margin-top:12px; min-height:16px;}
+#apiUrlNote{font-size:11px; color:#B0906E; margin-top:18px; line-height:1.5;}
+
+/* ---------- APP SHELL ---------- */
+#app{display:none; min-height:100vh; flex-direction:column;}
+header.topbar{
+  background:var(--coffee-900); color:#fff; padding:12px 18px; display:flex; align-items:center;
+  justify-content:space-between; position:sticky; top:0; z-index:20; box-shadow:var(--shadow);
+}
+.topbar .brand{display:flex; align-items:center; gap:10px; font-weight:700; font-size:15px;}
+.topbar .brand .dot{width:10px; height:10px; border-radius:50%; background:var(--coffee-300);}
+.topbar .who{font-size:12px; color:var(--coffee-300); display:flex; align-items:center; gap:10px;}
+.topbar .who button{background:transparent; color:#fff; border:1px solid rgba(255,255,255,.3); padding:6px 12px; border-radius:6px; font-size:12px;}
+
+.layout{display:flex; flex:1; min-height:0;}
+nav.sidebar{
+  width:210px; background:var(--coffee-700); color:var(--cream-100); padding:14px 0; flex-shrink:0;
+}
+nav.sidebar button{
+  display:flex; align-items:center; gap:10px; width:100%; text-align:left; background:transparent;
+  color:var(--cream-100); padding:11px 20px; font-size:13.5px; border-left:3px solid transparent;
+}
+nav.sidebar button.active{background:rgba(255,255,255,.12); border-left-color:var(--coffee-300); font-weight:600;}
+nav.sidebar button:hover{background:rgba(255,255,255,.08);}
+
+main.content{flex:1; padding:22px; overflow-x:hidden; min-width:0;}
+.view{display:none;}
+.view.active{display:block; animation:fadeIn .25s ease;}
+@keyframes fadeIn{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+h2.view-title{font-size:20px; color:var(--coffee-900); margin-bottom:4px;}
+p.view-sub{font-size:13px; color:var(--coffee-500); margin-bottom:20px;}
+
+.card{background:#fff; border-radius:var(--radius); box-shadow:var(--shadow); padding:18px; margin-bottom:18px;}
+.grid{display:grid; gap:16px;}
+.grid-4{grid-template-columns:repeat(4,1fr);}
+.grid-2{grid-template-columns:repeat(2,1fr);}
+@media(max-width:900px){.grid-4{grid-template-columns:repeat(2,1fr);} .grid-2{grid-template-columns:1fr;}}
+
+.stat-card{background:linear-gradient(135deg,var(--coffee-700),var(--coffee-900)); color:#fff; border-radius:var(--radius); padding:18px; box-shadow:var(--shadow);}
+.stat-card .label{font-size:11.5px; opacity:.8; text-transform:uppercase; letter-spacing:.05em;}
+.stat-card .value{font-size:26px; font-weight:700; margin-top:6px;}
+.stat-card.alt{background:linear-gradient(135deg,var(--coffee-300),var(--coffee-500)); color:var(--coffee-900);}
+
+/* Team Responsibility banner (Dashboard) - Plan / Check / Do / Improve / Achieve */
+.team-strip-card{background:#fff; border-radius:var(--radius); box-shadow:var(--shadow); padding:16px 18px; margin-bottom:18px;}
+.team-strip-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;}
+.team-strip-head h3{font-size:15px; color:var(--coffee-900); display:flex; align-items:center; gap:6px;}
+.team-strip-head .badge100{font-size:11px; font-weight:700; color:var(--coffee-700); background:var(--cream-100); padding:4px 10px; border-radius:20px; border:1px solid var(--coffee-300); white-space:nowrap;}
+.team-strip{display:flex; flex-wrap:wrap; gap:10px;}
+.team-step{flex:1; min-width:150px; border-radius:10px; padding:12px 14px; color:#fff; display:flex; align-items:center; gap:10px;}
+.team-step .num{width:24px; height:24px; border-radius:50%; background:rgba(255,255,255,.28); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:12px; flex-shrink:0;}
+.team-step .icon{font-size:18px; flex-shrink:0;}
+.team-step .label{font-weight:700; font-size:13.5px;}
+.team-step.plan{background:linear-gradient(135deg,#2f6fed,#1d4fb0);}
+.team-step.check{background:linear-gradient(135deg,#5a9e3f,#3f7a2a);}
+.team-step.do{background:linear-gradient(135deg,#e2942e,#b5721b);}
+.team-step.improve{background:linear-gradient(135deg,#8b5fc9,#6a3fa0);}
+.team-step.achieve{background:linear-gradient(135deg,#d64b3a,#a5312a);}
+.team-strip-tag{margin-top:12px; text-align:center; font-size:10.5px; letter-spacing:.08em; color:var(--coffee-500); text-transform:uppercase; font-weight:600;}
+@media(max-width:900px){.team-step{min-width:100%;}}
+
+table{width:100%; border-collapse:collapse; font-size:13px;}
+th,td{padding:9px 10px; text-align:left; border-bottom:1px solid #EEE0CC;}
+th{background:var(--cream-100); color:var(--coffee-700); font-weight:700; font-size:11.5px; text-transform:uppercase; letter-spacing:.03em;}
+tr:hover td{background:#FFFBF3;}
+.table-wrap{overflow-x:auto;}
+
+.badge{display:inline-block; padding:3px 9px; border-radius:20px; font-size:11px; font-weight:600;}
+.badge.Draft{background:#EEE; color:#777;}
+.badge.Submitted{background:#FCEBC9; color:var(--warn);}
+.badge.Approved{background:#E1EBD9; color:var(--ok);}
+.badge.Rejected{background:#F5DAD5; color:var(--danger);}
+
+.btn{padding:8px 14px; border-radius:7px; font-size:12.5px; font-weight:600;}
+.btn-brown{background:var(--coffee-700); color:#fff;}
+.btn-brown:hover{background:var(--coffee-900);}
+.btn-outline{background:#fff; border:1.4px solid var(--coffee-700); color:var(--coffee-700);}
+.btn-sm{padding:5px 10px; font-size:11.5px;}
+.btn-ok{background:var(--ok); color:#fff;}
+.btn-danger{background:var(--danger); color:#fff;}
+
+.form-row{display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin-bottom:12px;}
+.form-row label{display:block; font-size:11.5px; font-weight:600; color:var(--coffee-700); margin-bottom:4px; text-transform:uppercase;}
+.form-row input,.form-row select,.form-row textarea{width:100%; padding:9px 10px; border:1.4px solid var(--coffee-300); border-radius:7px; font-size:13.5px;}
+
+.line-item{border:1.4px dashed var(--coffee-300); border-radius:10px; padding:14px; margin-bottom:12px; position:relative; background:var(--cream-100);}
+.line-item .remove{position:absolute; top:8px; right:10px; background:transparent; color:var(--danger); font-size:16px; font-weight:700;}
+
+.wf-row{border-bottom:1px solid #EEE0CC; padding:2px 0;}
+.wf-row:last-child{border-bottom:none;}
+.wf-row label.wf-label{display:flex; align-items:center; gap:9px; padding:9px 2px; font-size:13.5px; cursor:pointer;}
+.wf-row input.wf-check{width:16px; height:16px; accent-color:var(--coffee-700); cursor:pointer;}
+.wf-count-box{background:var(--cream-100); border-radius:8px; padding:10px 12px; margin:0 0 10px 25px;}
+.draft-row{display:flex; justify-content:space-between; align-items:center; padding:9px 0; border-bottom:1px solid #EEE0CC;}
+.draft-row:last-child{border-bottom:none;}
+
+.toast{position:fixed; bottom:20px; right:20px; background:var(--coffee-900); color:#fff; padding:12px 18px; border-radius:8px; font-size:13px; box-shadow:var(--shadow); z-index:100; opacity:0; transform:translateY(10px); transition:all .25s;}
+.toast.show{opacity:1; transform:translateY(0);}
+
+.empty{text-align:center; color:var(--coffee-500); font-size:13px; padding:30px 0;}
+
+.progress-track{background:#EEE0CC; border-radius:20px; height:9px; width:130px; overflow:hidden; display:inline-block; vertical-align:middle; margin-right:8px;}
+.progress-fill{height:100%; border-radius:20px; background:var(--ok);}
+.progress-fill.warn{background:var(--warn);}
+.progress-fill.danger{background:var(--danger);}
+.li-target-info{font-size:11.5px; color:var(--coffee-500); margin-top:6px; line-height:1.6;}
+
+.bottom-nav{display:none;}
+@media(max-width:760px){
+  nav.sidebar{display:none;}
+  .bottom-nav{
+    display:flex; position:sticky; bottom:0; background:var(--coffee-900); z-index:20;
+    overflow-x:auto; padding:6px 4px;
+  }
+  .bottom-nav button{flex:0 0 auto; background:transparent; color:var(--cream-100); font-size:11px; padding:8px 12px; border-radius:8px; white-space:nowrap;}
+  .bottom-nav button.active{background:rgba(255,255,255,.15); font-weight:700;}
+  main.content{padding:14px;}
+  .grid-4{grid-template-columns:1fr 1fr;}
+}
+canvas{max-height:260px;}
+</style>
+</head>
+<body>
+
+<!-- ============ LOGIN ============ -->
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="brand-mark">☕</div>
+    <h1>Stores KPI &amp; Appraisal</h1>
+    <p class="sub">Sri Narasu's Coffee Company Pvt Ltd &mdash; Stores Department</p>
+    <div class="field">
+      <label>User ID</label>
+      <input id="loginUserId" type="text" autocomplete="username" placeholder="e.g. sakthivel">
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input id="loginPassword" type="password" autocomplete="current-password" placeholder="••••••••">
+    </div>
+    <button class="btn-primary" id="loginBtn" onclick="doLogin()">Log In</button>
+    <div id="loginError"></div>
+    <div id="apiUrlNote">Not connected to a backend yet — see SETUP.md to deploy your Apps Script Web App and paste its URL into config.js / the API_URL constant below.</div>
+  </div>
+</div>
+
+<!-- ============ APP ============ -->
+<div id="app">
+  <header class="topbar">
+    <div class="brand"><span class="dot"></span> Stores KPI &amp; Appraisal</div>
+    <div class="who">
+      <span id="whoLabel"></span>
+      <button onclick="logout()">Log Out</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="sidebar" id="sidebar"></nav>
+
+    <main class="content">
+
+      <!-- DASHBOARD -->
+      <section class="view" id="view-dashboard">
+        <h2 class="view-title">Dashboard</h2>
+        <p class="view-sub">Current month performance snapshot</p>
+
+        <div class="team-strip-card">
+          <div class="team-strip-head">
+            <h3>🏆 Team Responsibility</h3>
+            <span class="badge100">100 Years of Sri Narasu's Coffee</span>
+          </div>
+          <div class="team-strip">
+            <div class="team-step plan"><div class="num">1</div><div class="icon">📋</div><div class="label">We Plan</div></div>
+            <div class="team-step check"><div class="num">2</div><div class="icon">🔍</div><div class="label">We Check</div></div>
+            <div class="team-step do"><div class="num">3</div><div class="icon">⚙️</div><div class="label">We Do</div></div>
+            <div class="team-step improve"><div class="num">4</div><div class="icon">📈</div><div class="label">We Improve</div></div>
+            <div class="team-step achieve"><div class="num">5</div><div class="icon">🏆</div><div class="label">We Achieve</div></div>
+          </div>
+          <div class="team-strip-tag">Together &middot; Focused &middot; Committed &middot; Successful</div>
+        </div>
+
+        <div class="grid grid-4" id="dashStats"></div>
+        <div class="grid grid-2">
+          <div class="card"><h3 style="margin-bottom:10px;font-size:14px;color:var(--coffee-700)">KPI Score by Staff</h3><canvas id="chartStaff"></canvas></div>
+          <div class="card"><h3 style="margin-bottom:10px;font-size:14px;color:var(--coffee-700)">KPI Score by Activity</h3><canvas id="chartActivity"></canvas></div>
+        </div>
+      </section>
+
+      <!-- WORKING REGISTER -->
+      <section class="view" id="view-register">
+        <h2 class="view-title">Working Register</h2>
+        <p class="view-sub">Pick the Date and Activity once, then tick every workflow you performed.</p>
+        <div class="card">
+          <div class="form-row">
+            <div><label>Date</label><input type="date" id="regDate" onchange="loadEffectiveTargets(this.value)"></div>
+            <div><label>Activity</label><select id="regActivity" onchange="renderWorkflowChecklist()"><option value="">Select</option></select></div>
+          </div>
+
+          <div id="wfChecklistWrap" style="display:none;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin:14px 0 8px;">
+              <label style="font-size:11.5px;font-weight:600;color:var(--coffee-700);text-transform:uppercase;letter-spacing:.04em;">Select Workflows</label>
+              <div>
+                <button type="button" class="btn btn-outline btn-sm" onclick="toggleAllWorkflows(true)">Select All</button>
+                <button type="button" class="btn btn-outline btn-sm" onclick="toggleAllWorkflows(false)">Clear All</button>
+              </div>
+            </div>
+            <div id="wfChecklist"></div>
+            <div class="form-row" style="margin-top:12px;">
+              <div><label>Remarks (optional)</label><input type="text" id="regRemarks" placeholder="Applies to this entry"></div>
+            </div>
+          </div>
+
+          <div style="margin-top:16px;">
+            <button class="btn btn-outline" onclick="saveWorkingEntries('Draft')">🟡 Save Draft</button>
+            <button class="btn btn-brown" onclick="saveWorkingEntries('Submitted')">🟢 Submit</button>
+          </div>
+        </div>
+
+        <div class="card" id="myDraftsCard">
+          <h3 style="margin-bottom:10px;font-size:14px;color:var(--coffee-700)">My Draft Entries</h3>
+          <div id="myDraftsList"></div>
+        </div>
+
+        <div class="card">
+          <h3 style="margin-bottom:10px;font-size:14px;color:var(--coffee-700)">Recent Entries</h3>
+          <div class="table-wrap"><table id="registerTable"><thead><tr>
+            <th>Date</th><th>Staff</th><th>Activity</th><th>Workflow</th><th>Per-Entry Target</th><th>Actual</th><th>KPI Score</th><th>Status</th>
+          </tr></thead><tbody></tbody></table></div>
+        </div>
+      </section>
+
+      <!-- MONTHLY TARGETS (Manager only) -->
+      <section class="view" id="view-targets">
+        <h2 class="view-title">Monthly Target Management</h2>
+        <p class="view-sub">Set the monthly target for each Activity → Workflow. Manager only.</p>
+        <div class="card">
+          <div class="form-row">
+            <div><label>Month</label><input type="month" id="mtMonth"></div>
+            <div><label>Activity</label><select id="mtActivity" onchange="mtPopulateWorkflows()"><option value="">Select</option></select></div>
+            <div><label>Workflow</label><select id="mtWorkflow"><option value="">Select Activity first</option></select></div>
+            <div><label>Monthly Target</label><input type="number" id="mtTarget" min="0" step="1" value="0"></div>
+          </div>
+          <button class="btn btn-brown" onclick="saveMonthlyTarget()">Save Target</button>
+        </div>
+        <div class="card">
+          <h3 style="margin-bottom:10px;font-size:14px;color:var(--coffee-700)">Targets for Selected Month</h3>
+          <div class="table-wrap"><table id="targetsTable"><thead><tr>
+            <th>Activity</th><th>Workflow</th><th>KPI</th><th>Monthly Target</th><th></th>
+          </tr></thead><tbody></tbody></table></div>
+        </div>
+      </section>
+
+      <!-- TARGET STATUS (Manager + Staff, read-only) -->
+      <section class="view" id="view-targetStatus">
+        <h2 class="view-title">Target Status</h2>
+        <p class="view-sub">Progress of each workflow against its monthly target (Approved entries only)</p>
+        <div class="card">
+          <div class="form-row">
+            <div><label>Month</label><input type="month" id="tsMonth" onchange="loadTargetStatus()"></div>
+          </div>
+        </div>
+        <div class="grid grid-4" id="targetDashStats"></div>
+        <div class="card">
+          <div class="table-wrap"><table id="targetStatusTable"><thead><tr>
+            <th>Workflow</th><th>Target</th><th>Source</th><th>Approved Qty</th><th>Remaining</th><th>Progress</th><th></th>
+          </tr></thead><tbody></tbody></table></div>
+        </div>
+      </section>
+
+      <!-- APPROVALS (Manager only) -->
+      <section class="view" id="view-approvals">
+        <h2 class="view-title">Approvals</h2>
+        <p class="view-sub">Review Draft and Submitted working register entries. Edit counts if needed before deciding.</p>
+        <div style="margin-bottom:14px;">
+          <button class="btn btn-brown btn-sm" id="apTabSubmitted" onclick="setApprovalsTab('Submitted')">Submitted Entries</button>
+          <button class="btn btn-outline btn-sm" id="apTabDraft" onclick="setApprovalsTab('Draft')">Draft Entries</button>
+        </div>
+        <div id="approvalsList"></div>
+      </section>
+
+      <!-- ATTENDANCE -->
+      <section class="view" id="view-attendance">
+        <h2 class="view-title">Attendance</h2>
+        <p class="view-sub">Mark daily attendance</p>
+        <div class="card">
+          <div class="form-row">
+            <div><label>Date</label><input type="date" id="attDate"></div>
+            <div><label>Status</label>
+              <select id="attStatus"><option>Present</option><option>Absent</option><option>Half Day</option><option>Permission</option></select>
+            </div>
+            <div><label>Permission Hours</label><input type="number" id="attPermHrs" min="0" step="0.5" value="0"></div>
+          </div>
+          <div class="form-row"><div style="grid-column:1/-1"><label>Remarks</label><input type="text" id="attRemarks"></div></div>
+          <button class="btn btn-brown" onclick="markAttendance()">Save Attendance</button>
+        </div>
+        <div class="card">
+          <div class="table-wrap"><table id="attendanceTable"><thead><tr><th>Date</th><th>Staff</th><th>Status</th><th>Permission Hrs</th><th>Remarks</th></tr></thead><tbody></tbody></table></div>
+        </div>
+      </section>
+
+      <!-- LEAVE -->
+      <section class="view" id="view-leave">
+        <h2 class="view-title">Leave</h2>
+        <p class="view-sub">Apply for leave and track status</p>
+        <div class="card">
+          <div class="form-row">
+            <div><label>From</label><input type="date" id="lvFrom"></div>
+            <div><label>To</label><input type="date" id="lvTo"></div>
+            <div><label>Type</label><select id="lvType"><option>Casual</option><option>Sick</option><option>Earned</option><option>Unpaid</option></select></div>
+          </div>
+          <div class="form-row"><div style="grid-column:1/-1"><label>Reason</label><input type="text" id="lvReason"></div></div>
+          <button class="btn btn-brown" onclick="applyLeave()">Apply Leave</button>
+        </div>
+        <div class="card">
+          <div class="table-wrap"><table id="leaveTable"><thead><tr><th>Staff</th><th>From</th><th>To</th><th>Type</th><th>Reason</th><th>Status</th><th></th></tr></thead><tbody></tbody></table></div>
+        </div>
+      </section>
+
+      <!-- STAFF APPRAISAL -->
+      <section class="view" id="view-appraisal">
+        <h2 class="view-title">Staff Appraisal</h2>
+        <p class="view-sub">KPI-based appraisal for a custom date range</p>
+        <div class="card">
+          <div class="form-row">
+            <div><label>From</label><input type="date" id="apprFrom"></div>
+            <div><label>To</label><input type="date" id="apprTo"></div>
+            <div style="align-self:end;"><button class="btn btn-brown" onclick="loadAppraisal()">Run Appraisal</button></div>
+          </div>
+        </div>
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <h3 style="font-size:14px;color:var(--coffee-700)">Results</h3>
+            <button class="btn btn-outline btn-sm" onclick="exportAppraisal()">Export .xlsx</button>
+          </div>
+          <div class="table-wrap"><table id="appraisalTable"><thead><tr>
+            <th>Staff</th><th>Designation</th><th>Section</th><th>Entries</th><th>KPI Score</th>
+          </tr></thead><tbody></tbody></table></div>
+        </div>
+      </section>
+
+      <!-- REPORTS -->
+      <section class="view" id="view-reports">
+        <h2 class="view-title">Reports</h2>
+        <p class="view-sub">Staff-wise, Activity-wise, Workflow-wise and Section-wise reports for a custom date range</p>
+        <div class="card">
+          <div class="form-row">
+            <div><label>From</label><input type="date" id="repFrom"></div>
+            <div><label>To</label><input type="date" id="repTo"></div>
+            <div><label>Group By</label>
+              <select id="repGroupBy"><option value="Staff Name">Staff</option><option value="Activity Name">Activity</option><option value="Workflow Name">Workflow</option></select>
+            </div>
+            <div style="align-self:end;"><button class="btn btn-brown" onclick="runReport()">Run Report</button></div>
+          </div>
+        </div>
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <h3 style="font-size:14px;color:var(--coffee-700)">Results</h3>
+            <button class="btn btn-outline btn-sm" onclick="exportReport()">Export .xlsx</button>
+          </div>
+          <div class="table-wrap"><table id="reportTable"><thead><tr><th>Group</th><th>Entries</th><th>Total Per-Entry Target</th><th>Total Actual</th><th>Total KPI Score</th></tr></thead><tbody></tbody></table></div>
+        </div>
+      </section>
+
+      <!-- MASTERS (Manager only) -->
+      <section class="view" id="view-masters">
+        <h2 class="view-title">Master Data</h2>
+        <p class="view-sub">Staff, Activities and Workflows (read-only view — edit directly in Google Sheets for now)</p>MASTERS = await callApi('getMasters', {});
+        <div class="card">
+          <h3 style="margin-bottom:10px;font-size:14px;color:var(--coffee-700)">Staff Master</h3>
+          <div class="table-wrap"><table id="staffTable"><thead><tr><th>ID</th><th>Name</th><th>Designation</th><th>Section</th><th>Status</th></tr></thead><tbody></tbody></table></div>
+        </div>
+        <div class="card">
+          <h3 style="margin-bottom:10px;font-size:14px;color:var(--coffee-700)">Activity &amp; Workflow Master</h3>
+          <div class="table-wrap"><table id="workflowTable"><thead><tr><th>Activity</th><th>Workflow</th><th>KPI</th><th>Unit</th><th>Per-Entry Target</th><th>Weightage %</th><th>Max Score</th><th>Expected Output</th><th>Status</th></tr></thead><tbody></tbody></table></div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <nav class="bottom-nav" id="bottomNav"></nav>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   CONFIG — paste your deployed Apps Script Web App URL here
+   ============================================================ */
+const API_URL = "https://script.google.com/macros/s/AKfycbzDYgYdmxisxaOreNNZWcHiFtZYXp86SU-Pm1ZnmKDIHb-s53Qj_9gFWP5HEWUkV4AqAA/exec";
+/*
+ * Sri Narasu's Coffee Company Pvt Ltd
+ * Stores Department - Staff Working Register & KPI Appraisal System
+ * Frontend only. Talks to the Apps Script backend (code.gs) via API_URL above.
+ *
+ * ROLE MODEL: 2 roles only -> Manager, Staff (no Admin tier)
+ *   Staff  : create/submit own Working Register, Attendance, Leave; view own KPI
+ *   Manager: everything Staff can do + view all staff, Approve/Reject entries,
+ *            manage Master data, view Reports & Appraisal for the whole department
+ */
+
+/* ============================================================
+   STATE
+   ============================================================ */
+let SESSION = null;   // {userId, staffId, staffName, role}
+let MASTERS = { staff: [], activities: [], workflows: [] };
+// Mirrors TEAM_WORKFLOW_IDS in code.gs - specific Workflows (not whole
+// Activities) where several staff share the same truck/bill. EDIT THIS LIST
+// to exactly match TEAM_WORKFLOW_IDS in code.gs, or the Co-Staff checklist
+// will show up for the wrong workflows on the form.
+const TEAM_WORKFLOW_IDS = ['WF0001', 'WF0009', 'WF0019', 'WF0021', 'WF0023', 'WF0027', 'WF0033', 'WF0036', 'WF0039', 'WF0041'];
+
+/* ============================================================
+   API WRAPPER
+   ============================================================ */
+async function callApi(action, params) {
+  if (!API_URL || API_URL.indexOf('PASTE_') === 0) {
+    throw new Error('Backend not connected yet. Deploy code.gs and set API_URL (see SETUP.md).');
+  }
+  const res = await fetch(API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // avoids CORS preflight on Apps Script
+    body: JSON.stringify({ action, params })
+  });
+  const out = await res.json();
+  if (!out.ok) throw new Error(out.error || 'Unknown API error');
+  return out.data;
+}
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2600);
+}
+
+/* ============================================================
+   AUTH
+   ============================================================ */
+async function doLogin() {
+  const userId = document.getElementById('loginUserId').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const err = document.getElementById('loginError');
+  const btn = document.getElementById('loginBtn');
+  err.textContent = '';
+  if (!userId || !password) { err.textContent = 'Enter User ID and Password.'; return; }
+  btn.disabled = true; btn.textContent = 'Logging in...';
+  try {
+    const data = await callApi('login', { userId, password });
+    SESSION = data;
+    sessionStorage.setItem('kpi_session', JSON.stringify(data));
+    enterApp();
+  } catch (e) {
+    err.textContent = e.message;
+  } finally {
+    btn.disabled = false; btn.textContent = 'Log In';
+  }
+}
+
+function logout() {
+  SESSION = null;
+  sessionStorage.removeItem('kpi_session');
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+}
+
+/* ============================================================
+   NAVIGATION
+   ============================================================ */
+const NAV_ITEMS = [
+  { id: 'dashboard', label: '📊 Dashboard', roles: ['Manager', 'Staff'] },
+  { id: 'register', label: '📝 Working Register', roles: ['Manager', 'Staff'] },
+  { id: 'targets', label: '🎯 Monthly Targets', roles: ['Manager'] },
+  { id: 'targetStatus', label: '📈 Target Status', roles: ['Manager', 'Staff'] },
+  { id: 'approvals', label: '✅ Approvals', roles: ['Manager'] },
+  { id: 'attendance', label: '🗓️ Attendance', roles: ['Manager', 'Staff'] },
+  { id: 'leave', label: '🌴 Leave', roles: ['Manager', 'Staff'] },
+  { id: 'appraisal', label: '🏆 Staff Appraisal', roles: ['Manager'] },
+  { id: 'reports', label: '📁 Reports', roles: ['Manager'] },
+  { id: 'masters', label: '⚙️ Master Data', roles: ['Manager'] }
+];
+
+function buildNav() {
+  const items = NAV_ITEMS.filter(n => n.roles.includes(SESSION.role));
+  const sidebar = document.getElementById('sidebar');
+  const bottom = document.getElementById('bottomNav');
+  sidebar.innerHTML = '';
+  bottom.innerHTML = '';
+  items.forEach((n, i) => {
+    const b1 = document.createElement('button');
+    b1.textContent = n.label;
+    b1.onclick = () => showView(n.id);
+    b1.dataset.nav = n.id;
+    sidebar.appendChild(b1);
+
+    const b2 = document.createElement('button');
+    b2.textContent = n.label.split(' ')[0];
+    b2.onclick = () => showView(n.id);
+    b2.dataset.nav = n.id;
+    bottom.appendChild(b2);
+  });
+  showView(items[0].id);
+}
+
+function showView(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-' + id).classList.add('active');
+  document.querySelectorAll('[data-nav]').forEach(b => b.classList.toggle('active', b.dataset.nav === id));
+  if (id === 'dashboard') loadDashboard();
+  if (id === 'register') loadRegister();
+  if (id === 'targets') loadTargetsPage();
+  if (id === 'targetStatus') loadTargetStatus();
+  if (id === 'approvals') loadApprovals();
+  if (id === 'attendance') loadAttendance();
+  if (id === 'leave') loadLeave();
+  if (id === 'masters') loadMastersView();
+}
+
+/* ============================================================
+   APP BOOT
+   ============================================================ */
+async function enterApp() {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  document.getElementById('whoLabel').textContent = SESSION.staffName + ' · ' + SESSION.role;
+  try {
+    MASTERS = await callApi('getMasters', {});
+  } catch (e) { toast(e.message); }
+  buildNav();
+  document.getElementById('regDate').valueAsDate = new Date();
+  document.getElementById('attDate').valueAsDate = new Date();
+  loadEffectiveTargets(document.getElementById('regDate').value);
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  const saved = sessionStorage.getItem('kpi_session');
+  if (saved) { SESSION = JSON.parse(saved); enterApp(); }
+});
+
+/* ============================================================
+   DASHBOARD
+   ============================================================ */
+async function loadDashboard() {
+  const now = new Date();
+  const from = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+  const to = now.toISOString().slice(0, 10);
+  const p = { from, to };
+  if (SESSION.role === 'Staff') p.staffId = SESSION.staffId;
+  let d;
+  try { d = await callApi('getDashboard', p); } catch (e) { toast(e.message); return; }
+
+  document.getElementById('dashStats').innerHTML = `
+    <div class="stat-card"><div class="label">Approved Entries (MTD)</div><div class="value">${d.totalEntries}</div></div>
+    <div class="stat-card alt"><div class="label">Total KPI % (MTD)</div><div class="value">${d.totalKpiPct.toFixed(1)}%</div></div>
+    <div class="stat-card"><div class="label">Pending Approvals</div><div class="value">${d.pendingApprovals}</div></div>
+    <div class="stat-card alt"><div class="label">Role</div><div class="value" style="font-size:18px">${SESSION.role}</div></div>
+  `;
+  drawBarChart('chartStaff', d.byStaff, '#6F4E37');
+  drawBarChart('chartActivity', d.byActivity, '#9C6B45');
+}
+
+let chartRefs = {};
+function drawBarChart(canvasId, dataObj, color) {
+  const labels = Object.keys(dataObj);
+  const values = Object.values(dataObj);
+  const ctx = document.getElementById(canvasId);
+  if (chartRefs[canvasId]) chartRefs[canvasId].destroy();
+  chartRefs[canvasId] = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets: [{ data: values, backgroundColor: color, borderRadius: 5 }] },
+    options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+  });
+}
+
+/* ============================================================
+   WORKING REGISTER
+   Fixed Date + Activity, tick which workflows were performed,
+   enter a Count for each ticked workflow, then Save Draft or Submit.
+   ============================================================ */
+function populateRegActivitySelect() {
+  const sel = document.getElementById('regActivity');
+  const prev = sel.value;
+  sel.innerHTML = '<option value="">Select</option>' + MASTERS.activities.map(a =>
+    `<option value="${a['Activity ID']}">${a['Activity Name']}</option>`).join('');
+  sel.value = prev;
+}
+
+// KPI Target per Workflow ID for the currently-selected entry Date's month -
+// { target, source: 'Monthly'|'Default' } - fetched from the SAME
+// resolveTarget() rule the backend uses for scoring (getEffectiveTargets),
+// so the target shown here always matches what will actually be scored.
+let EFFECTIVE_TARGETS = {};
+function dateToMonthLabel(dateStr) {
+  if (!dateStr) return '';
+  const [y, m] = dateStr.split('-');
+  return MONTH_NAMES[Number(m) - 1] + '-' + y;
+}
+async function loadEffectiveTargets(dateStr) {
+  const month = dateToMonthLabel(dateStr);
+  if (!month) { EFFECTIVE_TARGETS = {}; return; }
+  try { EFFECTIVE_TARGETS = await callApi('getEffectiveTargets', { month }); }
+  catch (e) { EFFECTIVE_TARGETS = {}; }
+  renderWorkflowChecklist();
+}
+
+function renderWorkflowChecklist() {
+  const actId = document.getElementById('regActivity').value;
+  const wrap = document.getElementById('wfChecklistWrap');
+  const list = document.getElementById('wfChecklist');
+  if (!actId) { wrap.style.display = 'none'; list.innerHTML = ''; return; }
+  const wfs = MASTERS.workflows.filter(w => w['Activity ID'] === actId && w['Status'] !== 'Inactive');
+  const coStaffOptions = MASTERS.staff.filter(s => s['Staff ID'] !== SESSION.staffId && s['Status'] !== 'Inactive');
+  list.innerHTML = wfs.map(w => {
+    const isTeam = TEAM_WORKFLOW_IDS.indexOf(w['Workflow ID']) !== -1;
+    const eff = EFFECTIVE_TARGETS[w['Workflow ID']];
+    const targetHint = eff
+      ? `KPI Target: <strong>${eff.target}</strong> (${eff.source === 'Monthly' ? 'this month\u2019s target' : 'default target'})`
+      : `KPI Target: <strong>${w['Target']}</strong> (default target)`;
+    return `
+    <div class="wf-row" data-wfid="${w['Workflow ID']}">
+      <label class="wf-label">
+        <input type="checkbox" class="wf-check" onchange="toggleWfCount('${w['Workflow ID']}')">
+        ${w['Workflow Name']}
+      </label>
+      <p class="li-target-info">${targetHint}</p>
+      <div class="wf-count-box form-row" style="display:none;">
+        <div><label>Count</label><input type="number" class="wf-count" min="0" step="1" value="0"></div>
+        <div><label>Unit</label><input type="text" value="${w['Unit']}" readonly></div>
+      </div>
+      ${isTeam ? `
+      <div class="reg-co-staff-wrap" style="display:none;margin-top:10px;">
+        <label style="font-size:11.5px;font-weight:600;color:var(--coffee-700);text-transform:uppercase;letter-spacing:.04em;">Co-Staff who also worked on this (optional)</label>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:8px;">
+          ${coStaffOptions.map(s => `
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:400;">
+              <input type="checkbox" class="reg-co-staff" value="${s['Staff ID']}"> ${s['Staff Name']}
+            </label>
+          `).join('')}
+        </div>
+        <p style="font-size:11.5px;color:var(--coffee-500);margin-top:6px;">
+          This workflow is team-based. Tick everyone who worked the same truck/bill with you — the points will be shared equally among all of you once approved. Leave everyone unticked if you did this alone.
+        </p>
+      </div>` : ''}
+    </div>`;
+  }).join('');
+  wrap.style.display = wfs.length ? 'block' : 'none';
+}
+
+function toggleWfCount(wfId) {
+  const row = document.querySelector(`.wf-row[data-wfid="${wfId}"]`);
+  const checked = row.querySelector('.wf-check').checked;
+  row.querySelector('.wf-count-box').style.display = checked ? 'grid' : 'none';
+  const coWrap = row.querySelector('.reg-co-staff-wrap');
+  if (coWrap) coWrap.style.display = checked ? 'block' : 'none';
+}
+
+function toggleAllWorkflows(select) {
+  document.querySelectorAll('.wf-check').forEach(cb => {
+    cb.checked = select;
+    toggleWfCount(cb.closest('.wf-row').dataset.wfid);
+  });
+}
+
+async function saveWorkingEntries(mode) {
+  const date = document.getElementById('regDate').value;
+  const activityId = document.getElementById('regActivity').value;
+  if (!date) { toast('Select a date'); return; }
+  if (!activityId) { toast('Select an activity'); return; }
+  const remarks = document.getElementById('regRemarks').value;
+  const lines = [];
+  document.querySelectorAll('.wf-row').forEach(row => {
+    const cb = row.querySelector('.wf-check');
+    if (!cb.checked) return;
+    const wfId = row.dataset.wfid;
+    const wf = MASTERS.workflows.find(w => w['Workflow ID'] === wfId);
+    const isTeam = TEAM_WORKFLOW_IDS.indexOf(wfId) !== -1;
+    const coStaffIds = isTeam
+      ? Array.from(row.querySelectorAll('.reg-co-staff:checked')).map(cb2 => cb2.value)
+      : [];
+    const eff = EFFECTIVE_TARGETS[wfId];
+    lines.push({
+      activityId, workflowId: wfId, unit: wf['Unit'],
+      target: eff ? eff.target : wf['Target'], actual: row.querySelector('.wf-count').value, remarks, coStaffIds
+    });
+  });
+  if (lines.length === 0) { toast('Tick at least one workflow'); return; }
+  const zeroCountWfs = lines.filter(l => Number(l.actual) <= 0).map(l => {
+    const wf = MASTERS.workflows.find(w => w['Workflow ID'] === l.workflowId);
+    return wf ? wf['Workflow Name'] : l.workflowId;
+  });
+  if (zeroCountWfs.length) {
+    toast('Enter a Count above 0 for: ' + zeroCountWfs.join(', '));
+    return;
+  }
+  try {
+    const r = await callApi('addWorkingEntries', { staffId: SESSION.staffId, staffName: SESSION.staffName, date, lines });
+    if (mode === 'Submitted') {
+      await callApi('submitEntryGroup', { staffId: SESSION.staffId, groupId: r.groupId });
+      toast('Submitted for approval');
+    } else {
+      toast('Saved as draft');
+    }
+    document.getElementById('regActivity').value = '';
+    document.getElementById('regRemarks').value = '';
+    document.getElementById('wfChecklistWrap').style.display = 'none';
+    document.getElementById('wfChecklist').innerHTML = '';
+    loadRegister();
+  } catch (e) { toast(e.message); }
+}
+
+async function loadMyDrafts() {
+  const card = document.getElementById('myDraftsCard');
+  if (SESSION.role !== 'Staff') { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+  let groups;
+  try { groups = await callApi('getEntryGroups', { status: 'Draft', staffId: SESSION.staffId }); }
+  catch (e) { toast(e.message); return; }
+  const list = document.getElementById('myDraftsList');
+  if (groups.length === 0) { list.innerHTML = '<div class="empty">No drafts</div>'; return; }
+  groups.sort((a, b) => new Date(b.date) - new Date(a.date));
+  list.innerHTML = groups.map(g => `
+    <div class="draft-row">
+      <div>${fmtDate(g.date)} &middot; ${g.lines[0]['Activity Name']} &middot; ${g.lines.length} workflow(s)</div>
+      <div>
+        <button class="btn btn-brown btn-sm" onclick="submitDraft('${g.groupId}')">Submit</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteDraft('${g.groupId}')">Delete</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function submitDraft(groupId) {
+  try { await callApi('submitEntryGroup', { staffId: SESSION.staffId, groupId }); toast('Submitted for approval'); loadRegister(); }
+  catch (e) { toast(e.message); }
+}
+
+async function deleteDraft(groupId) {
+  if (!confirm('Delete this draft entry?')) return;
+  try {
+    await callApi('deleteEntryGroup', { actorRole: SESSION.role, actorUserId: SESSION.userId, staffId: SESSION.staffId, groupId });
+    toast('Draft deleted');
+    loadRegister();
+  } catch (e) { toast(e.message); }
+}
+
+async function loadRegister() {
+  populateRegActivitySelect();
+  loadMyDrafts();
+  const p = SESSION.role === 'Staff' ? { staffId: SESSION.staffId } : {};
+  let rows;
+  try { rows = await callApi('getWorkingRegister', p); } catch (e) { toast(e.message); return; }
+  rows.sort((a, b) => new Date(b['Date']) - new Date(a['Date']));
+  const tbody = document.querySelector('#registerTable tbody');
+  tbody.innerHTML = rows.slice(0, 50).map(r => {
+    const split = Number(r['Team Split Size']) > 1;
+    // Rejected (or any non-Approved) rows never earn KPI credit - always show
+    // 0 regardless of what the raw KPI Score / team split math would give.
+    const scoreCell = r['Approval Status'] !== 'Approved'
+      ? '0'
+      : (split
+        ? `${r['Effective KPI Score']} <span style="color:var(--coffee-500);font-size:11px;">(${r['KPI Score']} ÷ ${r['Team Split Size']})</span>`
+        : r['KPI Score']);
+    return `
+    <tr>
+      <td>${fmtDate(r['Date'])}</td><td>${r['Staff Name']}</td><td>${r['Activity Name']}</td><td>${r['Workflow Name']}</td>
+      <td>${r['Target']}</td><td>${r['Actual']}</td><td>${scoreCell}</td>
+      <td><span class="badge ${r['Approval Status']}">${r['Approval Status']}</span></td>
+    </tr>`;
+  }).join('') || `<tr><td colspan="8" class="empty">No entries yet</td></tr>`;
+}
+
+/* ============================================================
+   MONTH LABEL HELPERS
+   <input type="month"> gives "2026-07" - backend Month column uses "Jul-2026"
+   ============================================================ */
+const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function monthInputToLabel(val) {
+  if (!val) return '';
+  const [y, m] = val.split('-');
+  return MONTH_NAMES[Number(m) - 1] + '-' + y;
+}
+function currentMonthInputValue() {
+  const now = new Date();
+  return now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+}
+
+/* ============================================================
+   MONTHLY TARGETS (Manager)
+   ============================================================ */
+function mtPopulateWorkflows() {
+  const actId = document.getElementById('mtActivity').value;
+  const wfSelect = document.getElementById('mtWorkflow');
+  const wfs = MASTERS.workflows.filter(w => w['Activity ID'] === actId);
+  wfSelect.innerHTML = '<option value="">Select</option>' + wfs.map(w =>
+    `<option value="${w['Workflow ID']}">${w['Workflow Name']}</option>`).join('');
+}
+
+async function saveMonthlyTarget() {
+  const monthVal = document.getElementById('mtMonth').value;
+  const activityId = document.getElementById('mtActivity').value;
+  const workflowId = document.getElementById('mtWorkflow').value;
+  const target = document.getElementById('mtTarget').value;
+  if (!monthVal || !activityId || !workflowId) { toast('Select Month, Activity and Workflow'); return; }
+  try {
+    await callApi('addMonthlyTarget', {
+      actorRole: SESSION.role, actorUserId: SESSION.userId,
+      month: monthInputToLabel(monthVal), activityId, workflowId, target
+    });
+    toast('Monthly target saved');
+    loadTargetsPage();
+  } catch (e) { toast(e.message); }
+}
+
+async function loadTargetsPage() {
+  const activitySelect = document.getElementById('mtActivity');
+  if (activitySelect.options.length <= 1) {
+    activitySelect.innerHTML = '<option value="">Select</option>' +
+      MASTERS.activities.map(a => `<option value="${a['Activity ID']}">${a['Activity Name']}</option>`).join('');
+  }
+  if (!document.getElementById('mtMonth').value) document.getElementById('mtMonth').value = currentMonthInputValue();
+  const month = monthInputToLabel(document.getElementById('mtMonth').value);
+  let rows;
+  try { rows = await callApi('getMonthlyTargets', { month }); } catch (e) { toast(e.message); return; }
+  document.querySelector('#targetsTable tbody').innerHTML = rows.map(r => `
+    <tr>
+      <td>${r['Activity Name']}</td><td>${r['Workflow Name']}</td><td>${r['KPI Name']}</td>
+      <td>${r['Monthly Target']}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="deleteMonthlyTarget('${r['Target ID']}')">Delete</button></td>
+    </tr>`).join('') || `<tr><td colspan="5" class="empty">No targets set for this month yet</td></tr>`;
+}
+
+async function deleteMonthlyTarget(targetId) {
+  try {
+    await callApi('deleteMonthlyTarget', { actorRole: SESSION.role, actorUserId: SESSION.userId, targetId });
+    toast('Target deleted');
+    loadTargetsPage();
+  } catch (e) { toast(e.message); }
+}
+
+// re-load the targets table whenever the month picker changes
+document.addEventListener('DOMContentLoaded', () => {
+  const mtMonthEl = document.getElementById('mtMonth');
+  if (mtMonthEl) mtMonthEl.addEventListener('change', loadTargetsPage);
+});
+
+/* ============================================================
+   TARGET STATUS (Manager + Staff, read-only)
+   ============================================================ */
+async function loadTargetStatus() {
+  if (!document.getElementById('tsMonth').value) document.getElementById('tsMonth').value = currentMonthInputValue();
+  const month = monthInputToLabel(document.getElementById('tsMonth').value);
+  let d;
+  try { d = await callApi('getTargetDashboard', { month }); } catch (e) { toast(e.message); return; }
+
+  document.getElementById('targetDashStats').innerHTML = `
+    <div class="stat-card"><div class="label">Total Monthly Target</div><div class="value">${d.totalMonthlyTarget}</div></div>
+    <div class="stat-card alt"><div class="label">Total Approved Qty</div><div class="value">${d.totalApprovedQty}</div></div>
+    <div class="stat-card"><div class="label">Remaining Target</div><div class="value">${d.remainingTarget}</div></div>
+    <div class="stat-card alt"><div class="label">Overall Progress</div><div class="value">${d.overallProgressPct}%</div></div>
+    <div class="stat-card"><div class="label">Total Workflows</div><div class="value">${d.totalWorkflows}</div></div>
+    <div class="stat-card alt"><div class="label">Completed Workflows</div><div class="value">${d.completedWorkflows}</div></div>
+    <div class="stat-card"><div class="label">Pending Workflows</div><div class="value">${d.pendingWorkflows}</div></div>
+  `;
+
+  document.querySelector('#targetStatusTable tbody').innerHTML = d.statuses.map(s => {
+    const barClass = s.progressPct >= 75 ? '' : (s.progressPct >= 40 ? 'warn' : 'danger');
+    const pct = Math.min(s.progressPct, 100);
+    // Monthly = Manager set a target for this Workflow + Month explicitly.
+    // Default = no Monthly Target set yet, falling back to the workflow's
+    // own Default Target from the KPI Master (Workflow Master), so this is
+    // never blank.
+    const srcBadge = s.targetSource === 'Monthly'
+      ? `<span class="badge" style="background:var(--coffee-700);color:#fff;">Monthly</span>`
+      : `<span class="badge" style="background:var(--coffee-100);color:var(--coffee-700);">Default</span>`;
+    return `<tr>
+      <td>${s.workflowName}</td><td>${s.monthlyTarget}</td><td>${srcBadge}</td><td>${s.approvedQty}</td><td>${s.remaining}</td>
+      <td><span class="progress-track"><span class="progress-fill ${barClass}" style="width:${pct}%"></span></span>${s.progressPct}%</td>
+      <td>${s.status}</td>
+    </tr>`;
+  }).join('') || `<tr><td colspan="7" class="empty">No active workflows found</td></tr>`;
+}
+
+/* ============================================================
+   APPROVALS (Manager) — tabbed Submitted / Draft, with inline Edit
+   ============================================================ */
+let approvalsTab = 'Submitted';
+function setApprovalsTab(tab) {
+  approvalsTab = tab;
+  document.getElementById('apTabSubmitted').className = 'btn btn-sm ' + (tab === 'Submitted' ? 'btn-brown' : 'btn-outline');
+  document.getElementById('apTabDraft').className = 'btn btn-sm ' + (tab === 'Draft' ? 'btn-brown' : 'btn-outline');
+  loadApprovals();
+}
+
+async function loadApprovals() {
+  let groups;
+  try { groups = await callApi('getEntryGroups', { status: approvalsTab }); } catch (e) { toast(e.message); return; }
+  const el = document.getElementById('approvalsList');
+  if (groups.length === 0) {
+    el.innerHTML = `<div class="card empty">No ${approvalsTab.toLowerCase()} entries 🎉</div>`;
+    return;
+  }
+  groups.sort((a, b) => new Date(b.date) - new Date(a.date));
+  el.innerHTML = groups.map(g => {
+    const uniqueParticipants = new Set(g.lines.map(l => l['Staff ID'])).size;
+    return `
+    <div class="card" id="grp_${g.groupId}">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <div><strong>Logged by ${g.loggedByName}</strong> &middot; ${fmtDate(g.date)}${uniqueParticipants > 1 ? ` &middot; ${uniqueParticipants} staff (team)` : ''}</div>
+        <div>
+          ${approvalsTab === 'Submitted' ? `<button class="btn btn-ok btn-sm" onclick="decideAllLines('${g.groupId}','Approved')">Approve All</button>` : ''}
+          <button class="btn btn-outline btn-sm" onclick="toggleEditGroup('${g.groupId}')">Edit</button>
+        </div>
+      </div>
+      <div class="table-wrap"><table><thead><tr>
+        <th>Staff</th><th>Activity</th><th>Workflow</th><th>Per-Entry Target</th><th>Actual</th><th>Ach %</th><th>KPI Score</th>
+        ${approvalsTab !== 'Submitted' ? '<th>Status</th>' : ''}
+        ${approvalsTab === 'Submitted' ? '<th>Action</th>' : ''}
+      </tr></thead>
+        <tbody class="view-rows">
+        ${g.lines.map(l => {
+          const split = Number(l['Team Split Size']) > 1;
+          const scoreCell = split
+            ? `${l['Effective KPI Score']} <span style="color:var(--coffee-500);font-size:11px;">(${l['KPI Score']} ÷ ${l['Team Split Size']})</span>`
+            : l['KPI Score'];
+          return `<tr data-lineid="${l['Line ID']}">
+            <td>${l['Staff Name']}</td><td>${l['Activity Name']}</td><td>${l['Workflow Name']}</td>
+            <td>${l['Target']}</td><td>${l['Actual']}</td><td>${l['Achievement %']}%</td><td>${scoreCell}</td>
+            ${approvalsTab !== 'Submitted' ? `<td><span class="badge ${l['Approval Status']}">${l['Approval Status']}</span></td>` : ''}
+            ${approvalsTab === 'Submitted' ? `<td>
+              <button class="btn btn-ok btn-sm" onclick="decideLine('${l['Line ID']}','Approved')">Approve</button>
+              <button class="btn btn-danger btn-sm" onclick="decideLine('${l['Line ID']}','Rejected')">Reject</button>
+            </td>` : ''}
+          </tr>`;
+        }).join('')}
+        </tbody>
+        <tbody class="edit-rows" style="display:none;">
+        ${[...new Map(g.lines.map(l => [l['Workflow ID'], l])).values()].map(l => `<tr data-wfid="${l['Workflow ID']}"><td colspan="2">${l['Activity Name']}</td><td>${l['Workflow Name']}</td><td>${l['Target']}</td>
+          <td><input type="number" class="edit-actual" min="0" step="1" value="${l['Actual']}" style="width:80px;padding:5px 7px;border:1.4px solid var(--coffee-300);border-radius:6px;"></td>
+          <td colspan="3"></td></tr>`).join('')}
+        </tbody>
+      </table></div>
+      <div class="edit-save" style="display:none;margin-top:10px;">
+        <button class="btn btn-brown btn-sm" onclick="saveGroupEdit('${g.groupId}')">Save Changes</button>
+        <button class="btn btn-outline btn-sm" onclick="toggleEditGroup('${g.groupId}')">Cancel</button>
+      </div>
+    </div>
+  `;
+  }).join('');
+}
+
+function toggleEditGroup(groupId) {
+  const card = document.getElementById('grp_' + groupId);
+  const editing = card.querySelector('.edit-rows').style.display !== 'none';
+  card.querySelector('.view-rows').style.display = editing ? '' : 'none';
+  card.querySelector('.edit-rows').style.display = editing ? 'none' : '';
+  card.querySelector('.edit-save').style.display = editing ? 'none' : 'block';
+}
+
+async function saveGroupEdit(groupId) {
+  const card = document.getElementById('grp_' + groupId);
+  const lines = [];
+  card.querySelectorAll('.edit-rows tr').forEach(tr => {
+    lines.push({ workflowId: tr.dataset.wfid, actual: tr.querySelector('.edit-actual').value });
+  });
+  const zeroCountWfs = lines.filter(l => Number(l.actual) <= 0).map(l => {
+    const wf = MASTERS.workflows.find(w => w['Workflow ID'] === l.workflowId);
+    return wf ? wf['Workflow Name'] : l.workflowId;
+  });
+  if (zeroCountWfs.length) {
+    toast('Enter a Count above 0 for: ' + zeroCountWfs.join(', '));
+    return;
+  }
+  try {
+    await callApi('updateEntryGroup', { actorRole: SESSION.role, actorUserId: SESSION.userId, groupId, lines });
+    toast('Entry updated');
+    loadApprovals();
+  } catch (e) { toast(e.message); }
+}
+
+async function decideLine(lineId, decision) {
+  try {
+    await callApi('approveEntryLine', { actorRole: SESSION.role, actorUserId: SESSION.userId, lineId, decision });
+    toast(decision);
+    loadApprovals();
+  } catch (e) { toast(e.message); }
+}
+
+async function decideAllLines(groupId, decision) {
+  const lineIds = Array.from(document.querySelectorAll(`#grp_${groupId} tbody.view-rows tr[data-lineid]`))
+    .map(tr => tr.dataset.lineid);
+  if (lineIds.length === 0) return;
+  try {
+    await callApi('approveEntryLines', { actorRole: SESSION.role, actorUserId: SESSION.userId, lineIds, decision });
+    toast(decision + ' (' + lineIds.length + ')');
+    loadApprovals();
+  } catch (e) { toast(e.message); }
+}
+
+/* ============================================================
+   ATTENDANCE
+   ============================================================ */
+async function markAttendance() {
+  const date = document.getElementById('attDate').value;
+  const status = document.getElementById('attStatus').value;
+  const permissionHours = document.getElementById('attPermHrs').value;
+  const remarks = document.getElementById('attRemarks').value;
+  if (!date) { toast('Select a date'); return; }
+  try {
+    await callApi('markAttendance', { staffId: SESSION.staffId, staffName: SESSION.staffName, date, status, permissionHours, remarks });
+    toast('Attendance saved');
+    loadAttendance();
+  } catch (e) { toast(e.message); }
+}
+
+async function loadAttendance() {
+  const p = SESSION.role === 'Staff' ? { staffId: SESSION.staffId } : {};
+  let rows;
+  try { rows = await callApi('getAttendance', p); } catch (e) { toast(e.message); return; }
+  rows.sort((a, b) => new Date(b['Date']) - new Date(a['Date']));
+  document.querySelector('#attendanceTable tbody').innerHTML = rows.slice(0, 50).map(r => `
+    <tr><td>${fmtDate(r['Date'])}</td><td>${r['Staff Name']}</td><td>${r['Status']}</td><td>${r['Permission Hours']}</td><td>${r['Remarks']}</td></tr>
+  `).join('') || `<tr><td colspan="5" class="empty">No attendance records</td></tr>`;
+}
+
+/* ============================================================
+   LEAVE
+   ============================================================ */
+async function applyLeave() {
+  const fromDate = document.getElementById('lvFrom').value;
+  const toDate = document.getElementById('lvTo').value;
+  const leaveType = document.getElementById('lvType').value;
+  const reason = document.getElementById('lvReason').value;
+  if (!fromDate || !toDate) { toast('Select From and To dates'); return; }
+  try {
+    await callApi('applyLeave', { staffId: SESSION.staffId, staffName: SESSION.staffName, fromDate, toDate, leaveType, reason });
+    toast('Leave applied');
+    loadLeave();
+  } catch (e) { toast(e.message); }
+}
+
+async function loadLeave() {
+  const p = SESSION.role === 'Staff' ? { staffId: SESSION.staffId } : {};
+  let rows;
+  try { rows = await callApi('getLeaves', p); } catch (e) { toast(e.message); return; }
+  document.querySelector('#leaveTable tbody').innerHTML = rows.map(r => `
+    <tr>
+      <td>${r['Staff Name']}</td><td>${fmtDate(r['From Date'])}</td><td>${fmtDate(r['To Date'])}</td>
+      <td>${r['Leave Type']}</td><td>${r['Reason']}</td><td><span class="badge ${r['Status'] === 'Approved' ? 'Approved' : (r['Status'] === 'Rejected' ? 'Rejected' : 'Submitted')}">${r['Status']}</span></td>
+      <td>${SESSION.role === 'Manager' && r['Status'] === 'Pending' ? `
+        <button class="btn btn-ok btn-sm" onclick="decideLeave('${r['Leave ID']}','Approved')">✓</button>
+        <button class="btn btn-danger btn-sm" onclick="decideLeave('${r['Leave ID']}','Rejected')">✕</button>` : ''}</td>
+    </tr>
+  `).join('') || `<tr><td colspan="7" class="empty">No leave records</td></tr>`;
+}
+
+async function decideLeave(leaveId, decision) {
+  try {
+    await callApi('decideLeave', { actorRole: SESSION.role, actorUserId: SESSION.userId, leaveId, decision });
+    toast(decision);
+    loadLeave();
+  } catch (e) { toast(e.message); }
+}
+
+/* ============================================================
+   APPRAISAL
+   ============================================================ */
+let lastAppraisal = [];
+async function loadAppraisal() {
+  const from = document.getElementById('apprFrom').value;
+  const to = document.getElementById('apprTo').value;
+  try { lastAppraisal = await callApi('getAppraisal', { from, to }); } catch (e) { toast(e.message); return; }
+  document.querySelector('#appraisalTable tbody').innerHTML = lastAppraisal.map(a => `
+    <tr>
+      <td>${a.staffName}</td><td>${a.designation}</td><td>${a.section}</td><td>${a.entries}</td>
+      <td>${a.totalKpiScore.toFixed(1)}</td>
+    </tr>`).join('') || `<tr><td colspan="5" class="empty">No approved entries in this range</td></tr>`;
+}
+function ratingBadgeClass(r) {
+  if (r === 'Outstanding' || r === 'Excellent') return 'Approved';
+  if (r === 'Good' || r === 'Satisfactory') return 'Submitted';
+  return 'Rejected';
+}
+function exportAppraisal() {
+  if (!lastAppraisal.length) { toast('Run the appraisal first'); return; }
+  const rows = lastAppraisal.map(a => ({
+    Staff: a.staffName, Designation: a.designation, Section: a.section, Entries: a.entries,
+    'KPI Score': a.totalKpiScore, 'Max Possible': a.totalMaxScore, 'Overall %': a.overallPct, Rating: a.rating
+  }));
+  exportXlsx(rows, 'Staff_Appraisal.xlsx');
+}
+
+/* ============================================================
+   REPORTS
+   ============================================================ */
+let lastReport = [];
+async function runReport() {
+  const from = document.getElementById('repFrom').value;
+  const to = document.getElementById('repTo').value;
+  const groupField = document.getElementById('repGroupBy').value;
+  let rows;
+  try { rows = await callApi('getWorkingRegister', { from, to, status: 'Approved' }); } catch (e) { toast(e.message); return; }
+  const agg = {};
+  rows.forEach(r => {
+    const key = r[groupField];
+    if (!agg[key]) agg[key] = { key, entries: 0, target: 0, actual: 0, achSum: 0, kpi: 0 };
+    agg[key].entries++;
+    agg[key].target += Number(r['Target']) || 0;
+    agg[key].actual += Number(r['Actual']) || 0;
+    agg[key].achSum += Number(r['Achievement %']) || 0;
+    agg[key].kpi += Number(r['KPI Score']) || 0;
+  });
+  lastReport = Object.values(agg).map(a => ({
+    Group: a.key, Entries: a.entries, 'Total Per-Entry Target': a.target, 'Total Actual': a.actual,
+    'Avg Achievement %': Math.round((a.achSum / a.entries) * 100) / 100, 'Total KPI Score': Math.round(a.kpi * 100) / 100
+  }));
+  document.querySelector('#reportTable tbody').innerHTML = lastReport.map(r => `
+    <tr><td>${r.Group}</td><td>${r.Entries}</td><td>${r['Total Per-Entry Target']}</td><td>${r['Total Actual']}</td><td>${r['Total KPI Score']}</td></tr>
+  `).join('') || `<tr><td colspan="5" class="empty">No data for this range</td></tr>`;
+}
+function exportReport() {
+  if (!lastReport.length) { toast('Run the report first'); return; }
+  exportXlsx(lastReport, 'Stores_Report.xlsx');
+}
+
+function exportXlsx(rows, filename) {
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Report');
+  XLSX.writeFile(wb, filename);
+}
+
+/* ============================================================
+   MASTERS VIEW
+   ============================================================ */
+function loadMastersView() {
+  document.querySelector('#staffTable tbody').innerHTML = MASTERS.staff.map(s => `
+    <tr><td>${s['Staff ID']}</td><td>${s['Staff Name']}</td><td>${s['Designation']}</td><td>${s['Section']}</td><td>${s['Status']}</td></tr>
+  `).join('');
+  document.querySelector('#workflowTable tbody').innerHTML = MASTERS.workflows.map(w => `
+    <tr><td>${w['Activity Name']}</td><td>${w['Workflow Name']}</td><td>${w['KPI Name']}</td><td>${w['Unit']}</td>
+    <td>${w['Target']}</td><td>${w['Weightage %']}</td><td>${w['Max Score']}</td><td>${w['Expected Output']}</td><td>${w['Status']}</td></tr>
+  `).join('');
+}
+
+/* ============================================================
+   UTIL
+   ============================================================ */
+function fmtDate(d) {
+  if (!d) return '';
+  const dt = new Date(d);
+  if (isNaN(dt)) return d;
+  const dd = String(dt.getDate()).padStart(2, '0');
+  const mm = String(dt.getMonth() + 1).padStart(2, '0');
+  return `${dd}-${mm}-${dt.getFullYear()}`;
+}
+</script>
+</body>
+</html>
